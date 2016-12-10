@@ -12,6 +12,8 @@ from sklearn.linear_model import ElasticNetCV
 import sys
 from copy import deepcopy
 import re
+from words import program
+import pickle
 
 from sklearn.metrics import mean_squared_error
 from math import sqrt
@@ -167,90 +169,90 @@ def checkRegex(dictionary, data, default=-1):
 	return result
 
 
-def getFlatType(descriptions):
-	return checkRegex({
-			'.*kawalerk.*':1,
-			'.*studio.*':1,
-			'.*blok.*':2, 
-			'.*niskim? blok.*':3,
-			'.*apartament.*':5,
-			'.*apartamentow.*':4,
-			'.*jednorodz.*':6,
-			'.*szeregow.*':6,
-			'.*blizniak.*':6},
-		descriptions,
-		default=0)
-
-
-def getCondition(descriptions):
-	return checkRegex(
-	{
-		'.*do.*?remontu.*':1,
-		'.*do.*?wykoncze.*':2,
-		'.*bez wykoncz.*':2,
-		'.*odrestauro.*':3,
-		'.*rewital.*':4, 
-		'.*odnowio.*':4,
-		'.*po.*?remoncie.*':5,
-		'.*wyremontow.*':5,
-		'.*pod klucz.*':6,
-		'.*peln.*?wyposaz.*':6},
-	descriptions,
-	default=0)
-
-	
-def getProtected(descriptions):
-	return checkRegex(
-	{
-		'.*monitor.*':1,
-		'.*strzezo.*':1,
-		'.*ochrona.*':1,
-		'.*chronion.*':1,
-		},
-	descriptions,
-	default=0)
-
-
-def getParking(descriptions):
-	return checkRegex(
-	{
-		'.*parking.*':1,
-		'.*postoj.*':1,
-		'.*garaz.*':2
-		},
-	descriptions,
-	default=0)
-
-
-def getKitchen(descriptions):
-	return checkRegex(
-	{
-		'.*aneks.*':1,
-		'.*kuchni.*':2
-		},
-	descriptions,
-	default=1)
-
-
-def getHardLocalization(descriptions):
-	return checkRegex(
-	{
-		'.*now.*?osiedl.*':1,
-		'.*taras.*?warty*':2
-		},
-	descriptions,
-	default=0)	
-
-
-def getGarden(descriptions):
-	return checkRegex(
-	{
-		'.*ogrodek.*':1,
-		'.*ogrodkiem.*':1,
-		'.*dzialk.*':1
-		},
-	descriptions,
-	default=0)
+#def getFlatType(descriptions):
+#	return checkRegex({
+#			'.*kawalerk.*':1,
+#			'.*studio.*':1,
+#			'.*blok.*':2, 
+#			'.*niskim? blok.*':3,
+#			'.*apartament.*':5,
+#			'.*apartamentow.*':4,
+#			'.*jednorodz.*':6,
+#			'.*szeregow.*':6,
+#			'.*blizniak.*':6},
+#		descriptions,
+#		default=0)
+#
+#
+#def getCondition(descriptions):
+#	return checkRegex(
+#	{
+#		'.*do.*?remontu.*':1,
+#		'.*do.*?wykoncze.*':2,
+#		'.*bez wykoncz.*':2,
+#		'.*odrestauro.*':3,
+#		'.*rewital.*':4, 
+#		'.*odnowio.*':4,
+#		'.*po.*?remoncie.*':5,
+#		'.*wyremontow.*':5,
+#		'.*pod klucz.*':6,
+#		'.*peln.*?wyposaz.*':6},
+#	descriptions,
+#	default=0)
+#
+#	
+#def getProtected(descriptions):
+#	return checkRegex(
+#	{
+#		'.*monitor.*':1,
+#		'.*strzezo.*':1,
+#		'.*ochrona.*':1,
+#		'.*chronion.*':1,
+#		},
+#	descriptions,
+#	default=0)
+#
+#
+#def getParking(descriptions):
+#	return checkRegex(
+#	{
+#		'.*parking.*':1,
+#		'.*postoj.*':1,
+#		'.*garaz.*':2
+#		},
+#	descriptions,
+#	default=0)
+#
+#
+#def getKitchen(descriptions):
+#	return checkRegex(
+#	{
+#		'.*aneks.*':1,
+#		'.*kuchni.*':2
+#		},
+#	descriptions,
+#	default=1)
+#
+#
+#def getHardLocalization(descriptions):
+#	return checkRegex(
+#	{
+#		'.*now.*?osiedl.*':1,
+#		'.*taras.*?warty*':2
+#		},
+#	descriptions,
+#	default=0)	
+#
+#
+#def getGarden(descriptions):
+#	return checkRegex(
+#	{
+#		'.*ogrodek.*':1,
+#		'.*ogrodkiem.*':1,
+#		'.*dzialk.*':1
+#		},
+#	descriptions,
+#	default=0)
 	
 
 def _rejectOutliers__(data, m):
@@ -299,3 +301,18 @@ def predict(data, regresor):
 def compress(data, selectors):
     # compress('ABCDEF', [1,0,1,0,1,1]) --> A C E F
     return [d for d, s in zip(data, selectors) if s]
+	
+def saveObj(obj, name ):
+	with open(name, 'w', encoding="utf8", newline='') as csvfile:
+		spamwriter = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+		for i in obj:
+			spamwriter.writerow([i[0], i[1]])
+        
+
+def loadObj(name ):
+	lst = list()
+	with open(name, 'r', encoding="utf8", newline='') as csvfile:
+		spamreader = csv.reader(csvfile, delimiter='\t', quotechar='|')
+		for row in spamreader:
+			lst.append([float(row[0]), row[1]])
+	return lst

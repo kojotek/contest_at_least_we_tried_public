@@ -15,13 +15,14 @@ from math import sqrt
 import contestLib as cl
 
 
-TARGET = "train"
-
+TARGET = "gonito"
+WORDCOUNTA = 100
+WORDCOUNTB = 700
 
 ###to mozna modyfikowac do woli
 ___poznanCenter = [52.407860, 16.928249]
 
-___removalParams = [2, 2, 2, 2, 2, 2, 2, 2, 2, 100, 100, 100, 100, 100, 100, 100]
+___removalParams = [1, 1, 1, 1, 1]
 
 
 ___learningDataBool = [
@@ -29,18 +30,7 @@ ___learningDataBool = [
 	1,	#rooms
 	1,	#meters
 	1,	#floors
-	0,	#pricesPerMeterNEVER!
-	0,	#first coords
-	0,	#second coords
-	0,	#distance
-	0,  #metersPerRoom
-	1,  #flatType
-	1,  #condition
-	0,  #protected
-	0,  #parking
-	0,  #kitchen
-	0,  #garden
-	0  #hardLocalization
+	1,	#distance
 	]
 
 #huber 364.17868, eps_ins = 363.66310, sq_eps_ins = 370.294969
@@ -66,7 +56,7 @@ ___regression = linear_model.SGDRegressor(
 		l1_ratio=0.4,
 		learning_rate=___learningRate[___learningRateN],
 		loss=___lossMethod[___lossMethodN], 
-		n_iter=10000,
+		n_iter=30000,
 		penalty=___penaltyMethod[___penaltyMethodN],
 		power_t=0.25,
 		random_state=___shuffleSeed,
@@ -82,8 +72,15 @@ ___regression = linear_model.SGDRegressor(
 #	verbose=0, n_jobs=1, positive=False, random_state=None,
 #	selection='cyclic')
 
-___predicted = 0 #0 is price, 1 is for price per meter
+#___predicted = 0 #0 is price, 1 is for price per meter
 ####
+
+
+
+
+
+
+
 
 
 
@@ -92,24 +89,38 @@ firstCoords, secondCoords = cl.loadTrainCoords()
 
 ___distanceCenter = cl.getDistanceToPoint(firstCoords, secondCoords, ___poznanCenter[0], ___poznanCenter[1])
 
-metersPerRoom = [m/r for m,r in zip(meters,rooms)]
+wordsDict = cl.loadObj("dict")
+words = [i[1] for i in wordsDict]
+words = words[WORDCOUNTA:WORDCOUNTB]
 
-flatType = cl.getFlatType(descriptions)
-condition = cl.getCondition(descriptions)
-protected = cl.getProtected(descriptions)
-parking = cl.getParking(descriptions)
-kitchen = cl.getKitchen(descriptions)
-garden = cl.getGarden(descriptions)
-hardLocalization = cl.getHardLocalization(descriptions)
+wordLists = list()
+for word in words:
+	wordOcc = list()
+	for desc in descriptions:
+		if word in desc:
+			wordOcc.append(1.0)
+		else:
+			wordOcc.append(0.0)
+	wordLists.append(wordOcc)
+	
+#metersPerRoom = [m/r for m,r in zip(meters,rooms)]
+
+#flatType = cl.getFlatType(descriptions)
+#condition = cl.getCondition(descriptions)
+#protected = cl.getProtected(descriptions)
+#parking = cl.getParking(descriptions)
+#kitchen = cl.getKitchen(descriptions)
+#garden = cl.getGarden(descriptions)
+#hardLocalization = cl.getHardLocalization(descriptions)
 
 	
-filteredData = cl.removeOutliers([prices, rooms, meters, floors, pricesPerMeter, firstCoords, secondCoords, ___distanceCenter, metersPerRoom, flatType, condition, protected, parking, kitchen, garden, hardLocalization], ___removalParams)
+filteredData = cl.removeOutliers([prices, rooms, meters, floors, ___distanceCenter], ___removalParams)
 
 filtered_prices = filteredData[0]
 filtered_pricesPerMeter = filteredData[4]
 
 ___learningData = cl.compress(filteredData, ___learningDataBool)
-
+___learningData = ___learningData + wordLists
 
 #for i in range(len(dataList)):
 #	if ___learningDataBool[i] >= 1:
@@ -122,14 +133,21 @@ ___learningData = cl.compress(filteredData, ___learningDataBool)
 
 expected = list()
 
-if ___predicted >= 1:
-	expected = filtered_pricesPerMeter
-else:
-	expected = filtered_prices
+expected = filtered_prices
 
 
 #model = cl.createRegression(scaledData, expected, ___regression)
 model = cl.createRegression(___learningData, expected, ___regression)
+
+
+
+
+
+
+
+
+
+
 
 
 ###########predykcja i ocena bledu
@@ -145,27 +163,52 @@ test_rooms, test_meters, test_floors, test_locations, test_descriptions = loadDa
 test_firstCoords, test_secondCoords = loadDataFunc[1]()
 test_distanceCenter = cl.getDistanceToPoint(test_firstCoords, test_secondCoords, ___poznanCenter[0], ___poznanCenter[1])
 
-test_metersPerRoom = [m/r for m,r in zip(test_meters,test_rooms)]
 
-test_flatType = cl.getFlatType(test_descriptions)
-test_condition = cl.getCondition(test_descriptions)
-test_protected = cl.getProtected(test_descriptions)
-test_parking = cl.getParking(test_descriptions)
-test_kitchen = cl.getKitchen(test_descriptions)
-test_garden = cl.getGarden(test_descriptions)
-test_hardLocalization = cl.getHardLocalization(test_descriptions)
+#test_metersPerRoom = [m/r for m,r in zip(test_meters,test_rooms)]
 
-test_dataList = [[], test_rooms, test_meters, test_floors, [], test_firstCoords, test_secondCoords, test_distanceCenter, test_metersPerRoom, test_flatType, test_condition, test_protected, test_parking, test_kitchen, test_garden, test_hardLocalization]
+#test_flatType = cl.getFlatType(test_descriptions)
+#test_condition = cl.getCondition(test_descriptions)
+#test_protected = cl.getProtected(test_descriptions)
+#test_parking = cl.getParking(test_descriptions)
+#test_kitchen = cl.getKitchen(test_descriptions)
+#test_garden = cl.getGarden(test_descriptions)
+#test_hardLocalization = cl.getHardLocalization(test_descriptions)
+
+test_dataList = None
+test_expected = None
+
+if TARGET == "dev":
+	#print([ np.array([1]*len(test_rooms)) ,test_rooms, test_meters, test_floors, test_distanceCenter])
+	test_expected = np.array(cl.loadDevExpected())
+	test_filteredData = cl.removeOutliers([test_expected, test_rooms, test_meters, test_floors, test_distanceCenter], ___removalParams)
+	test_dataList = test_filteredData
+else:
+	test_dataList = [[], test_rooms, test_meters, test_floors, test_distanceCenter]
 
 test_data = cl.compress(test_dataList, ___learningDataBool)
 
+
+test_wordLists = list()
+for word in words:
+	wordOcc = list()
+	for desc in test_descriptions:
+		if word in desc:
+			wordOcc.append(1.0)
+		else:
+			wordOcc.append(0.0)
+	test_wordLists.append(wordOcc)
+
+	
+test_data = test_data + test_wordLists
+
+	
 predicted = cl.predict(test_data, model)
 
 if TARGET == 'train':
 	predicted = cl.predict(___learningData, model)
 
-if ___predicted >= 1:
-	predicted = [a*b for a,b in zip(predicted,test_meters)]
+#if ___predicted >= 1:
+#	predicted = [a*b for a,b in zip(predicted,test_meters)]
 
 test_expected = None
 
@@ -176,8 +219,8 @@ if TARGET == 'gonito':
 	for p in predicted:
 		print('{0:f}'.format(p))	
 elif TARGET == 'dev':
-	test_expected = cl.loadDevExpected()
-	print(cl.rmse(test_expected, predicted))
+	#test_expected = cl.loadDevExpected()
+	print(cl.rmse(test_filteredData[0], predicted))
 elif TARGET == 'train':
 	test_expected = filtered_prices
 	print(cl.rmse(test_expected, predicted))

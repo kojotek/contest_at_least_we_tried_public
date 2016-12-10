@@ -15,7 +15,7 @@ from math import sqrt
 import contestLib as cl
 
 
-TARGET = "train"
+TARGET = "dev"
 
 
 ###to mozna modyfikowac do woli
@@ -43,47 +43,22 @@ ___learningDataBool = [
 	0  #hardLocalization
 	]
 
-#huber 364.17868, eps_ins = 363.66310, sq_eps_ins = 370.294969
-___lossMethod = ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive']
-___lossMethodN = 2
 
-#none = 363.66310, l2 = 363.61123,l 1 = 363.81478077037843, elasticnet = 363.3668235609241
-___penaltyMethod = ['none', 'l2', 'l1', 'elasticnet']
-___penaltyMethodN = 3
-
-___shuffleSeed = 0
-
-#invscaling da best
-___learningRate = ['constant', 'optimal', 'invscaling']
-___learningRateN = 1
-
-___regression = linear_model.SGDRegressor(
-		alpha=0.0001,
-		average=False,
-		epsilon=0.01,
-		eta0=0.01,
-		fit_intercept=True,
-		l1_ratio=0.4,
-		learning_rate=___learningRate[___learningRateN],
-		loss=___lossMethod[___lossMethodN], 
-		n_iter=10000,
-		penalty=___penaltyMethod[___penaltyMethodN],
-		power_t=0.25,
-		random_state=___shuffleSeed,
-		shuffle=True,
-		verbose=1,
-		warm_start=False
-		)
-
-#linear_model.ElasticNetCV(
-#	l1_ratio=0.5, eps=0.0001, n_alphas=100, alphas=None,
-#	fit_intercept=True, normalize=False, precompute='auto',
-#	max_iter=10000, tol=0.0001, cv=None, copy_X=True,
-#	verbose=0, n_jobs=1, positive=False, random_state=None,
-#	selection='cyclic')
-
-___predicted = 0 #0 is price, 1 is for price per meter
-####
+___regression = linear_model.LogisticRegression(
+	penalty='l2', 
+	dual=False, 
+	tol=0.0001, 
+	C=0.5, 
+	fit_intercept=True, 
+	intercept_scaling=1, 
+	class_weight=None, 
+	random_state=15, 
+	solver='newton-cg', 
+	max_iter=100000, 
+	multi_class='ovr', 
+	verbose=1, 
+	warm_start=False, 
+	n_jobs=2)
 
 
 
@@ -119,14 +94,11 @@ ___learningData = cl.compress(filteredData, ___learningDataBool)
 #scaler = cl.generateScaler(___learningData)
 #scaledData = cl.scaleData(___learningData, scaler)
 
-
 expected = list()
 
-if ___predicted >= 1:
-	expected = filtered_pricesPerMeter
-else:
-	expected = filtered_prices
-
+expected = np.array(filtered_prices)
+expected = [int(p//10) * 10 for p in expected]
+#expected = [print(p) for p in expected]
 
 #model = cl.createRegression(scaledData, expected, ___regression)
 model = cl.createRegression(___learningData, expected, ___regression)
@@ -163,9 +135,6 @@ predicted = cl.predict(test_data, model)
 
 if TARGET == 'train':
 	predicted = cl.predict(___learningData, model)
-
-if ___predicted >= 1:
-	predicted = [a*b for a,b in zip(predicted,test_meters)]
 
 test_expected = None
 
